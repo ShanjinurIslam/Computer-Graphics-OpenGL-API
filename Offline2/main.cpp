@@ -254,15 +254,17 @@ public:
 
 int main(int argc, const char *argv[])
 {
-    cout.setf(ios::fixed);
-    cout.setf(ios::showpoint);
-    cout.precision(5);
     ModelView view;
     Vector eye, look, up;
     double fovY, aspectRatio, near, far;
 
     ifstream in;
+    ofstream out1;
     in.open("scene.txt", ifstream::in);
+    out1.open("stage1.txt", ofstream::out);
+    out1.setf(ios::fixed);
+    out1.setf(ios::showpoint);
+    out1.precision(5);
     string line;
     if (in.is_open())
     {
@@ -285,7 +287,7 @@ int main(int argc, const char *argv[])
                     in >> point[0][0] >> point[1][0] >> point[2][0];
                     point[3][0] = 1;
                     //view.printMatrix(view.transformationStack.top(),4,4);
-                    cout << endl;
+                    out1 << endl;
                     point = view.crossMatrix(view.transformationStack.top(), point, 4, 1);
                     if (point[3][0] > 1)
                     {
@@ -294,9 +296,9 @@ int main(int argc, const char *argv[])
                         point[2][0] = point[2][0] / point[3][0];
                         point[3][0] = 1;
                     }
-                    cout << point[0][0] << " " << point[1][0] << " " << point[2][0];
+                    out1 << point[0][0] << " " << point[1][0] << " " << point[2][0];
                 }
-                cout << endl;
+                out1 << endl;
 
                 //view.printMatrix(view.crossMatrix(view.transformationStack.top(),triangleMatrix),3);
             }
