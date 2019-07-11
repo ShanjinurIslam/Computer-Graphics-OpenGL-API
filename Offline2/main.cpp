@@ -306,6 +306,35 @@ public:
         return matrix;
     }
 
+    double **projectionMatrix(double fovY, double aspectRatio, double near, double far)
+    {
+        double **matrix = new double *[4];
+        for (int i = 0; i < 4; i++)
+        {
+            matrix[i] = new double[4];
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                matrix[i][j] = 0;
+            }
+        }
+        double fovX = fovY * aspectRatio;
+        double t, r;
+        t = near * tan(fovY / 2);
+        r = near * tan(fovX / 2);
+
+        matrix[0][0] = near / r;
+        matrix[1][1] = near / t;
+        matrix[2][2] = -(far + near) / (far - near);
+        matrix[2][3] = -(2 * far * near) / (far - near);
+        matrix[3][2] = -1;
+
+        return matrix;
+    }
+
     void printMatrix(double **matrix, int r, int c)
     {
         for (int i = 0; i < r; i++)
@@ -326,17 +355,23 @@ int main(int argc, const char *argv[])
     double fovY, aspectRatio, near, far;
 
     ifstream in;
-    ofstream out1, out2;
+    ofstream out1, out2, out3;
     in.open("scene.txt", ifstream::in);
+
     out1.open("stage1.txt", ofstream::out);
     out1.setf(ios::fixed);
     out1.setf(ios::showpoint);
-    out1.precision(5);
+    out1.precision(7);
 
     out2.open("stage2.txt", ofstream::out);
     out2.setf(ios::fixed);
     out2.setf(ios::showpoint);
-    out2.precision(5);
+    out2.precision(7);
+
+    out3.open("stage3.txt", ofstream::out);
+    out3.setf(ios::fixed);
+    out3.setf(ios::showpoint);
+    out3.precision(7);
     string line;
     if (in.is_open())
     {
@@ -354,6 +389,8 @@ int main(int argc, const char *argv[])
         double **rotationMatrix = view.rotationMatrix(l, r, up);
 
         in >> fovY >> aspectRatio >> near >> far;
+        double **projectionMatrix = view.projectionMatrix(fovY * (acos(-1.0) / 180.0), aspectRatio, near, far);
+
         getline(in, line);
         while (in >> line)
         {
@@ -371,6 +408,7 @@ int main(int argc, const char *argv[])
                     //view.printMatrix(view.transformationStack.top(),4,4);
                     out1 << endl;
                     out2 << endl;
+                    out3 << endl;
                     point = view.crossMatrix(view.transformationStack.top(), point, 4, 1);
                     if (point[3][0] > 1)
                     {
@@ -392,9 +430,21 @@ int main(int argc, const char *argv[])
                         point[3][0] = 1;
                     }
                     out2 << point[0][0] << " " << point[1][0] << " " << point[2][0];
+
+                    point = view.crossMatrix(projectionMatrix, point, 4, 1);
+
+                    if (point[3][0] > 1)
+                    {
+                        point[0][0] = point[0][0] / point[3][0];
+                        point[1][0] = point[1][0] / point[3][0];
+                        point[2][0] = point[2][0] / point[3][0];
+                        point[3][0] = 1;
+                    }
+                    out3 << point[0][0] << " " << point[1][0] << " " << point[2][0];
                 }
                 out1 << endl;
                 out2 << endl;
+                out3 << endl;
 
                 //view.printMatrix(view.crossMatrix(view.transformationStack.top(),triangleMatrix),3);
             }
