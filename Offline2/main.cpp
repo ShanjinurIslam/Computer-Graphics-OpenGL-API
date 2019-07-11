@@ -46,6 +46,16 @@ public:
         return temp;
     }
 
+    Vector operator-(Vector v)
+    {
+        Vector temp;
+        temp.ax = this->ax - v.ax;
+        temp.ay = this->ay - v.ay;
+        temp.az = this->az - v.az;
+
+        return temp;
+    }
+
     Vector &operator=(Vector v)
     {
         this->ax = v.ax;
@@ -239,6 +249,92 @@ public:
         return matrix;
     }
 
+    double **movetooroginMatrix(Vector eye)
+    {
+        double **matrix = new double *[4];
+        for (int i = 0; i < 4; i++)
+        {
+            matrix[i] = new double[4];
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                matrix[i][j] = 0;
+            }
+            matrix[i][i] = 1;
+        }
+
+        matrix[0][3] = -eye.ax;
+        matrix[1][3] = -eye.ay;
+        matrix[2][3] = -eye.az;
+
+        return matrix;
+    }
+
+    double **rotationMatrix(Vector l, Vector r, Vector u)
+    {
+        double **matrix = new double *[4];
+        for (int i = 0; i < 4; i++)
+        {
+            matrix[i] = new double[4];
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                matrix[i][j] = 0;
+            }
+        }
+
+        matrix[0][0] = r.ax;
+        matrix[0][1] = r.ay;
+        matrix[0][2] = r.az;
+
+        matrix[1][0] = u.ax;
+        matrix[1][1] = u.ay;
+        matrix[1][2] = u.az;
+
+        matrix[2][0] = -l.ax;
+        matrix[2][1] = -l.ay;
+        matrix[2][2] = -l.az;
+
+        matrix[3][3] = 1;
+
+        return matrix;
+    }
+
+    double **projectionMatrix(double fovY, double aspectRatio, double near, double far)
+    {
+        double **matrix = new double *[4];
+        for (int i = 0; i < 4; i++)
+        {
+            matrix[i] = new double[4];
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                matrix[i][j] = 0;
+            }
+        }
+        double fovX = fovY * aspectRatio;
+        double t, r;
+        t = near * tan(fovY / 2);
+        r = near * tan(fovX / 2);
+
+        matrix[0][0] = near / r;
+        matrix[1][1] = near / t;
+        matrix[2][2] = -(far + near) / (far - near);
+        matrix[2][3] = -(2 * far * near) / (far - near);
+        matrix[3][2] = -1;
+
+        return matrix;
+    }
+
     void printMatrix(double **matrix, int r, int c)
     {
         for (int i = 0; i < r; i++)
@@ -259,19 +355,42 @@ int main(int argc, const char *argv[])
     double fovY, aspectRatio, near, far;
 
     ifstream in;
-    ofstream out1;
+    ofstream out1, out2, out3;
     in.open("scene.txt", ifstream::in);
+
     out1.open("stage1.txt", ofstream::out);
     out1.setf(ios::fixed);
     out1.setf(ios::showpoint);
-    out1.precision(5);
+    out1.precision(7);
+
+    out2.open("stage2.txt", ofstream::out);
+    out2.setf(ios::fixed);
+    out2.setf(ios::showpoint);
+    out2.precision(7);
+
+    out3.open("stage3.txt", ofstream::out);
+    out3.setf(ios::fixed);
+    out3.setf(ios::showpoint);
+    out3.precision(7);
     string line;
     if (in.is_open())
     {
         in >> eye.ax >> eye.ay >> eye.az;
         in >> look.ax >> look.ay >> look.az;
         in >> up.ax >> up.ay >> up.az;
+
+        Vector l = (look - eye);
+        l.normalize();
+        Vector r = l.cross(up);
+        r.normalize();
+        up = r.cross(l);
+
+        double **originMatrix = view.movetooroginMatrix(eye);
+        double **rotationMatrix = view.rotationMatrix(l, r, up);
+
         in >> fovY >> aspectRatio >> near >> far;
+        double **projectionMatrix = view.projectionMatrix(fovY * (acos(-1.0) / 180.0), aspectRatio, near, far);
+
         getline(in, line);
         while (in >> line)
         {
@@ -288,6 +407,8 @@ int main(int argc, const char *argv[])
                     point[3][0] = 1;
                     //view.printMatrix(view.transformationStack.top(),4,4);
                     out1 << endl;
+                    out2 << endl;
+                    out3 << endl;
                     point = view.crossMatrix(view.transformationStack.top(), point, 4, 1);
                     if (point[3][0] > 1)
                     {
@@ -297,8 +418,33 @@ int main(int argc, const char *argv[])
                         point[3][0] = 1;
                     }
                     out1 << point[0][0] << " " << point[1][0] << " " << point[2][0];
+
+                    point = view.crossMatrix(originMatrix, point, 4, 1);
+                    point = view.crossMatrix(rotationMatrix, point, 4, 1);
+
+                    if (point[3][0] > 1)
+                    {
+                        point[0][0] = point[0][0] / point[3][0];
+                        point[1][0] = point[1][0] / point[3][0];
+                        point[2][0] = point[2][0] / point[3][0];
+                        point[3][0] = 1;
+                    }
+                    out2 << point[0][0] << " " << point[1][0] << " " << point[2][0];
+
+                    point = view.crossMatrix(projectionMatrix, point, 4, 1);
+
+                    if (point[3][0] > 1)
+                    {
+                        point[0][0] = point[0][0] / point[3][0];
+                        point[1][0] = point[1][0] / point[3][0];
+                        point[2][0] = point[2][0] / point[3][0];
+                        point[3][0] = 1;
+                    }
+                    out3 << point[0][0] << " " << point[1][0] << " " << point[2][0];
                 }
                 out1 << endl;
+                out2 << endl;
+                out3 << endl;
 
                 //view.printMatrix(view.crossMatrix(view.transformationStack.top(),triangleMatrix),3);
             }
