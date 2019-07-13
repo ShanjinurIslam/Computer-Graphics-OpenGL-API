@@ -405,7 +405,6 @@ int main(int argc, const char *argv[])
                 {
                     in >> point[0][0] >> point[1][0] >> point[2][0];
                     point[3][0] = 1;
-                    view.printMatrix(view.transformationStack.top(), 4, 4);
                     out1 << endl;
                     out2 << endl;
                     out3 << endl;
